@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 const KEY_ARRAY: &[(&str, u16); 548] = &[
     ("KEY_RESERVED", 0),
     ("KEY_ESC", 1),
@@ -551,8 +553,59 @@ const KEY_ARRAY: &[(&str, u16); 548] = &[
 
 pub struct KeyCode(pub u16);
 
+impl Display for KeyCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut final_name = String::new();
+
+        for (name, code) in KEY_ARRAY {
+            if *code == self.0 {
+                final_name = (*name).to_string();
+            }
+        }
+
+        final_name = final_name.replacen("KEY_", "", 1);
+        final_name = final_name.replacen("BTN_", "", 1);
+
+        write!(f, "{final_name}")
+    }
+}
+
 impl From<u16> for KeyCode {
     fn from(value: u16) -> Self {
         Self(value)
+    }
+}
+
+impl From<&str> for KeyCode {
+    fn from(input: &str) -> Self {
+        let input = process_key_name_input(input);
+        for (name, code) in KEY_ARRAY {
+            if *name == input {
+                return Self(*code);
+            }
+        }
+        panic!("Invalid Input Key Name");
+    }
+}
+
+fn process_key_name_input(str: &str) -> String {
+    let mut str = str.to_uppercase();
+    if !str.contains("BTN_") {
+        str = format!("KEY_{str}");
+    }
+    str
+}
+
+#[cfg(test)]
+mod key_code_module_test {
+    use super::*;
+
+    #[test]
+    fn display_trait_implemented_for_key_code() {
+        let keycode = KeyCode::from("esc");
+        assert_eq!(keycode.to_string(), "ESC");
+
+        let keycode: KeyCode = 32.into();
+        assert_eq!(keycode.to_string(), "D");
     }
 }
