@@ -1,8 +1,17 @@
+use std::fmt::Display;
+
+#[derive(Debug)]
 pub enum KeyState {
     Down,
     Up,
     Hold,
     Uninitiated,
+}
+
+impl Display for KeyState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 impl From<i32> for KeyState {
@@ -16,4 +25,3 @@ impl From<i32> for KeyState {
         }
     }
 }
-

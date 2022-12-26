@@ -26,10 +26,10 @@ mod keyboard_module_test {
 
     #[test]
     fn getset_getters_macro_test() {
-        let keyboard = Keyboard::new("My Keyboard", "usb.0.1/input0", "L1");
+        let keyboard = Keyboard::new("L1", "My Keyboard", "usb.0.1/input0");
 
+        assert_eq!(keyboard.alias(), "L1");
         assert_eq!(keyboard.name(), "My Keyboard");
         assert_eq!(keyboard.path(), "usb.0.1/input0");
-        assert_eq!(keyboard.alias(), "L1");
     }
 }
