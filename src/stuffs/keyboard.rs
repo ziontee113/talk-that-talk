@@ -1,21 +1,21 @@
 #[derive(Getters)]
 pub struct Keyboard {
-    #[getset(get)]
+    #[getset(get = "pub")]
+    alias: String,
+
+    #[getset(get = "pub")]
     name: String,
 
-    #[getset(get)]
+    #[getset(get = "pub")]
     path: String,
-
-    #[getset(get)]
-    alias: String,
 }
 
 impl Keyboard {
-    pub fn new<S: Into<String>>(name: S, path: S, alias: S) -> Self {
+    pub fn new<S: Into<String>>(alias: S, name: S, path: S) -> Self {
         Self {
+            alias: alias.into(),
             name: name.into(),
             path: path.into(),
-            alias: alias.into(),
         }
     }
 }
