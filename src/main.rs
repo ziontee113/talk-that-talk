@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_macros)]
 #![warn(clippy::pedantic)]
 
 #[macro_use]

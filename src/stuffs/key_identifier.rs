@@ -3,8 +3,8 @@ use std::fmt::Display;
 use super::{key_code::KeyCode, keyboard::Keyboard};
 
 pub struct KeyIdentifier<'a> {
-    code: KeyCode,
     device: &'a Keyboard,
+    code: KeyCode,
 }
 
 impl<'a> Display for KeyIdentifier<'a> {
@@ -14,7 +14,7 @@ impl<'a> Display for KeyIdentifier<'a> {
 }
 
 impl<'a> KeyIdentifier<'a> {
-    pub fn new<T: Into<KeyCode>>(code: T, device: &'a Keyboard) -> Self {
+    pub fn new<T: Into<KeyCode>>(device: &'a Keyboard, code: T) -> Self {
         Self {
             code: code.into(),
             device,
@@ -31,7 +31,7 @@ mod key_identifer_module_test {
     fn display_trait_for_key_identifier_implemented() {
         let device = Keyboard::new("L1", "My Keyboard", "usb/0/0/input0");
 
-        let key_identifier = KeyIdentifier::new(32, &device);
+        let key_identifier = KeyIdentifier::new(&device, 32);
         assert_eq!(key_identifier.to_string(), "L1 D");
     }
 }

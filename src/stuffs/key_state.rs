@@ -5,7 +5,6 @@ pub enum KeyState {
     Down,
     Up,
     Hold,
-    Uninitiated,
 }
 
 impl Display for KeyState {
@@ -20,8 +19,18 @@ impl From<i32> for KeyState {
             0 => KeyState::Up,
             1 => KeyState::Down,
             2 => KeyState::Hold,
-            -1 => KeyState::Uninitiated,
-            _ => unreachable!(),
+            _ => panic!("Invalid i32 KeyState Input"),
+        }
+    }
+}
+
+impl From<&str> for KeyState {
+    fn from(input: &str) -> Self {
+        match input {
+            "Down" => KeyState::Down,
+            "Up" => KeyState::Up,
+            "Hold" => KeyState::Hold,
+            _ => panic!("Invalid &str KeyState Input"),
         }
     }
 }
