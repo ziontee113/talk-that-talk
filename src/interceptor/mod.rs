@@ -47,7 +47,14 @@ fn emit_only_on_key_up_experiment(
     code: u16,
     virtual_device: &mut evdev::uinput::VirtualDevice,
 ) {
-    if value == 0 {
+    let keys_to_skip: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+
+    if keys_to_skip.contains(&code) {
+        let event = event_from_code(code, value);
+        virtual_device.emit(&[event]).unwrap();
+    }
+
+    if !keys_to_skip.contains(&code) && value == 0 {
         let kb_down_event = event_from_code(code, 1);
         let kb_up_event = event_from_code(code, 0);
 
