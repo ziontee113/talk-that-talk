@@ -10,6 +10,5 @@ mod stuffs;
 mod test_utilities;
 
 fn main() {
-    // println!("Hello, world!");
     interceptor::start();
 }

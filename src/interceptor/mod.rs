@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use crate::devices::{self, input::EventKindCheck};
+use crate::devices::{self, input::EventKindCheck, output::event_from_code};
 
 enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
@@ -20,26 +20,38 @@ pub fn mock_device_alias() -> HashMap<&'static str, &'static str> {
 }
 
 pub fn start() {
+    // Development Variables
     let alias_map = mock_device_alias();
 
-    // ----------------------------------------------------------------
-
+    // Message Channels
     let (tx, rx) = mpsc::channel();
 
     for (device_alias, device_path) in alias_map {
         intercept(tx.clone(), device_alias, device_path);
     }
 
-    // ----------------------------------------------------------------
-
-    // let mut virtual_device = devices::output::new().unwrap();
+    // Interception
+    let mut virtual_device = devices::output::new().unwrap();
 
     for signal in rx {
         match signal {
-            TransmitSignal::Key(device_alias, code, value, _timestamp) => {
-                println!("{device_alias} {code} {value}");
+            TransmitSignal::Key(_device_alias, code, value, _timestamp) => {
+                emit_only_on_key_up_experiment(value, code, &mut virtual_device);
             }
         }
+    }
+}
+
+fn emit_only_on_key_up_experiment(
+    value: i32,
+    code: u16,
+    virtual_device: &mut evdev::uinput::VirtualDevice,
+) {
+    if value == 0 {
+        let kb_down_event = event_from_code(code, 1);
+        let kb_up_event = event_from_code(code, 0);
+
+        virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
     }
 }
 
