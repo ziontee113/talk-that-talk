@@ -4,9 +4,12 @@
 #[macro_use]
 extern crate getset;
 
+mod devices;
+mod interceptor;
 mod stuffs;
 mod test_utilities;
 
 fn main() {
-    println!("Hello, world!");
+    // println!("Hello, world!");
+    interceptor::start();
 }

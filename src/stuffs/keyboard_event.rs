@@ -32,7 +32,7 @@ macro_rules! tke {
     }};
 }
 
-#[allow(non_snake_case, unused_variables)]
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod keyboard_event_module_test {
     use crate::{stuffs::keyboard::Keyboard, test_utilities::mipoch};
@@ -45,10 +45,10 @@ mod keyboard_event_module_test {
         let R1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
 
         let L1_LEFTCTRL = KeyIdentifier::new(&L1, "LEFTCTRL");
-        let event_1 = KeyboardEvent::new(L1_LEFTCTRL, "Down", mipoch(0));
+        let _event_1 = KeyboardEvent::new(L1_LEFTCTRL, "Down", mipoch(0));
 
         let R1_J = KeyIdentifier::new(&R1, "J");
-        let event_2 = KeyboardEvent::new(R1_J, 1, mipoch(50));
+        let _event_2 = KeyboardEvent::new(R1_J, 1, mipoch(50));
     }
 
     #[test]
@@ -56,7 +56,7 @@ mod keyboard_event_module_test {
         let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
         let R1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
 
-        let event_1 = tke!(L1 LEFTCTRL Down 0);
-        let event_2 = tke!(R1 J Down 50);
+        let _event_1 = tke!(L1 LEFTCTRL Down 0);
+        let _event_2 = tke!(R1 J Down 50);
     }
 }
