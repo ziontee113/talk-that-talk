@@ -2,9 +2,15 @@ use std::time::SystemTime;
 
 use super::{key_identifier::KeyIdentifier, key_state::KeyState};
 
+#[derive(Getters, Debug, PartialEq, Eq)]
 pub struct KeyboardEvent<'a> {
+    #[getset(get = "pub")]
     key: KeyIdentifier<'a>,
+
+    #[getset(get = "pub")]
     value: KeyState,
+
+    #[getset(get = "pub")]
     timestamp: SystemTime,
 }
 
@@ -19,10 +25,15 @@ impl<'a> KeyboardEvent<'a> {
 }
 
 /// Test Keyboard Event
+#[macro_export]
 macro_rules! tke {
     ($device:ident $key:ident $value:ident $time:literal) => {{
-        let key = KeyIdentifier::new(&$device, stringify!($key));
-        let event = KeyboardEvent::new(key, stringify!($value), mipoch($time));
+        let key = $crate::stuffs::key_identifier::KeyIdentifier::new(&$device, stringify!($key));
+        let event = KeyboardEvent::new(
+            key,
+            stringify!($value),
+            $crate::test_utilities::mipoch($time),
+        );
         event
     }};
     ($device:ident $key:ident $value:literal $time:literal) => {{

@@ -5,6 +5,7 @@
 extern crate getset;
 
 mod devices;
+mod event_processor;
 mod interceptor;
 mod stuffs;
 mod test_utilities;
