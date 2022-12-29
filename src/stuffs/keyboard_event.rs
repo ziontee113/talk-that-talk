@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{fmt::Display, time::SystemTime};
 
 use super::{key_identifier::KeyIdentifier, key_state::KeyState};
 
@@ -21,6 +21,12 @@ impl<'a> KeyboardEvent<'a> {
             value: value.into(),
             timestamp,
         }
+    }
+}
+
+impl<'a> Display for KeyboardEvent<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.key, self.value)
     }
 }
 
@@ -69,5 +75,17 @@ mod keyboard_event_module_test {
 
         let _event_1 = tke!(L1 LEFTCTRL Down 0);
         let _event_2 = tke!(R1 J Down 50);
+    }
+
+    #[test]
+    fn display_trait_implemented_for_keyboard_event_struct() {
+        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
+        let R1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
+
+        let event_1 = tke!(L1 LEFTCTRL Down 0);
+        assert_eq!(event_1.to_string(), "L1 LEFTCTRL Down");
+
+        let event_2 = tke!(R1 J Down 50);
+        assert_eq!(event_2.to_string(), "R1 J Down");
     }
 }
