@@ -28,8 +28,12 @@ fn rules_to_print() -> HashMap<&'static str, &'static str> {
         ("L1 LEFTCTRL Down, R1 J Down", "my first mapping"),
         ("L1 LEFTCTRL Down, R1 K Down", "my second mapping"),
         ("L1 S Down, R1 O Down", "my third mapping: SO"),
-        ("R1 O Down, L1 S Down", "my third mapping: O then S"),
+        ("R1 O Down, L1 S Down", "my fourth mapping: O then S"),
         ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
+        ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: 105"),
+        ("L1 CAPSLOCK Down, R1 J Down", "MAP_CODE: 108"),
+        ("L1 CAPSLOCK Down, R1 K Down", "MAP_CODE: 103"),
+        ("L1 CAPSLOCK Down, R1 L Down", "MAP_CODE: 106"),
     ])
 }
 
@@ -68,15 +72,18 @@ pub fn start() {
 
                 // FRAUD:
                 if let Some(msg) = rules_to_print.get(sm.output().as_str()) {
+                    let pat = "MAP_CODE: ";
                     let split: Vec<&str> = msg.split("MAP_CODE: ").collect();
 
-                    if split.last().is_some() {
+                    if msg.contains(pat) {
                         let code: u16 = split.last().unwrap().parse().unwrap();
 
                         let kb_down_event = event_from_code(code, 1);
                         let kb_up_event = event_from_code(code, 0);
 
-                        virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+                        if !sm.emitted() {
+                            virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+                        }
                     } else {
                         println!("{msg}");
                     }
