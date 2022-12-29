@@ -25,15 +25,13 @@ fn mock_device_alias() -> HashMap<&'static str, &'static str> {
 
 fn rules_to_print() -> HashMap<&'static str, &'static str> {
     HashMap::from([
-        ("L1 LEFTCTRL Down, R1 J Down", "my first mapping"),
-        ("L1 LEFTCTRL Down, R1 K Down", "my second mapping"),
-        ("L1 S Down, R1 O Down", "my third mapping: SO"),
-        ("R1 O Down, L1 S Down", "my fourth mapping: O then S"),
         ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
         ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: 105"),
         ("L1 CAPSLOCK Down, R1 J Down", "MAP_CODE: 108"),
         ("L1 CAPSLOCK Down, R1 K Down", "MAP_CODE: 103"),
         ("L1 CAPSLOCK Down, R1 L Down", "MAP_CODE: 106"),
+        ("L1 H Down, R1 J Down", "MAP_CODE: 114"),
+        ("L1 H Down, R1 K Down", "MAP_CODE: 115"),
     ])
 }
 
@@ -92,7 +90,7 @@ pub fn start() {
                 } else {
                     // println!("{}", sm.output());
 
-                    emit_only_on_key_up_experiment(value, code, &mut virtual_device, *sm.emitted());
+                    emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
                 }
             }
         }
@@ -103,7 +101,7 @@ fn emit_only_on_key_up_experiment(
     value: i32,
     code: u16,
     virtual_device: &mut evdev::uinput::VirtualDevice,
-    emitted: bool,
+    sm: &SequenceManager,
 ) {
     let key_codes_to_skip: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
 
@@ -112,11 +110,24 @@ fn emit_only_on_key_up_experiment(
         virtual_device.emit(&[event]).unwrap();
     }
 
-    if !key_codes_to_skip.contains(&code) && value == 0 && !emitted {
-        let kb_down_event = event_from_code(code, 1);
-        let kb_up_event = event_from_code(code, 0);
+    if !key_codes_to_skip.contains(&code) && value == 0 && !sm.emitted() {
+        // handle down events
+        let mut events = vec![];
+        for modifier_code in sm.modifiers() {
+            events.push(event_from_code(*modifier_code, 1));
+        }
+        events.push(event_from_code(code, 1));
 
-        virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+        // handle up events
+        let mut up_events = vec![];
+        for modifier_code in sm.modifiers() {
+            up_events.push(event_from_code(*modifier_code, 0));
+        }
+        up_events.push(event_from_code(code, 0));
+
+        // append and emit
+        events.append(&mut up_events);
+        virtual_device.emit(&events).unwrap();
     }
 }
 

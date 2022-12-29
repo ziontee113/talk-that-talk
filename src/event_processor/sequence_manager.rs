@@ -10,6 +10,9 @@ pub struct SequenceManager<'a> {
 
     #[getset(get = "pub", set = "pub")]
     emitted: bool,
+
+    #[getset(get = "pub")]
+    modifiers: Vec<u16>,
 }
 
 impl<'a> SequenceManager<'a> {
@@ -18,11 +21,20 @@ impl<'a> SequenceManager<'a> {
             sequence: vec![],
             output: String::new(),
             emitted: false,
+            modifiers: vec![],
         }
     }
 
     pub fn receive(&mut self, event: KeyboardEvent<'a>) {
         self.output.clear();
+
+        let modifier_codes: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+
+        if self.emitted || self.sequence.is_empty() {
+            self.modifiers.clear();
+        } else if modifier_codes.contains(&event.key().code().0) {
+            self.modifiers.push(event.key().code().0);
+        }
 
         match event.value() {
             KeyState::Down => {
