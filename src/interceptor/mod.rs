@@ -88,8 +88,6 @@ pub fn start() {
 
                     sm.set_emitted(true);
                 } else {
-                    // println!("{}", sm.output());
-
                     emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
                 }
             }
@@ -103,14 +101,19 @@ fn emit_only_on_key_up_experiment(
     virtual_device: &mut evdev::uinput::VirtualDevice,
     sm: &SequenceManager,
 ) {
-    let key_codes_to_skip: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+    let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+    let ignore_list: Vec<u16> = vec![58];
 
-    if key_codes_to_skip.contains(&code) {
+    if ignore_list.contains(&code) {
+        return;
+    }
+
+    if modifiers.contains(&code) {
         let event = event_from_code(code, value);
         virtual_device.emit(&[event]).unwrap();
     }
 
-    if !key_codes_to_skip.contains(&code) && value == 0 && !sm.emitted() {
+    if !modifiers.contains(&code) && value == 0 && !sm.emitted() {
         // handle down events
         let mut events = vec![];
         for modifier_code in sm.modifiers() {
