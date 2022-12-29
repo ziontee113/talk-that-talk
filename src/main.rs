@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_macros)]
 #![warn(clippy::pedantic)]
+#![feature(drain_filter)]
 
 #[macro_use]
 extern crate getset;

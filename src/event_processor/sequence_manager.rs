@@ -1,37 +1,40 @@
 use crate::stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent};
 
-#[derive(Getters)]
-struct SequenceManager<'a> {
+#[derive(Getters, Setters)]
+pub struct SequenceManager<'a> {
     #[getset(get = "pub")]
     sequence: Vec<KeyboardEvent<'a>>,
 
     #[getset(get = "pub")]
     output: String,
+
+    #[getset(get = "pub", set = "pub")]
+    emitted: bool,
 }
 
 impl<'a> SequenceManager<'a> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             sequence: vec![],
             output: String::new(),
+            emitted: false,
         }
     }
 
-    fn receive(&mut self, event: KeyboardEvent<'a>) {
-        self.output = String::new();
+    pub fn receive(&mut self, event: KeyboardEvent<'a>) {
+        self.output.clear();
 
         match event.value() {
             KeyState::Down => {
                 self.add_event(event);
+                self.emitted = false;
             }
             KeyState::Up => {
                 if event.key() == self.sequence.last().unwrap().key() {
                     self.output = self.sequence_as_string();
-
-                    self.sequence.pop();
-                } else {
-                    self.add_event(event);
                 }
+
+                self.sequence.drain_filter(|e| e.key() == event.key());
             }
             KeyState::Hold => (),
         }
@@ -58,46 +61,6 @@ mod sequence_manager_module_test {
     use super::*;
 
     #[test]
-    fn can_add_down_event_to_sequence() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let R1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 LEFTCTRL Down 0));
-        assert_eq!(*sm.sequence().get(0).unwrap(), tke!(L1 LEFTCTRL Down 0));
-
-        sm.receive(tke!(R1 J Down 50));
-        assert_eq!(*sm.sequence().get(1).unwrap(), tke!(R1 J Down 50));
-    }
-
-    #[test]
-    fn can_remove_sequence_element_on_key_up() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 LEFTCTRL Down 0));
-        sm.receive(tke!(L1 J Down 50));
-        sm.receive(tke!(L1 J Up 100));
-        assert_eq!(sm.sequence().len(), 1);
-    }
-
-    #[test]
-    fn can_add_key_up_event_to_sequence_if_didnt_match_last_element_key() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 LEFTCTRL Down 0));
-        sm.receive(tke!(L1 J Down 100));
-        sm.receive(tke!(L1 LEFTCTRL Up 200));
-
-        assert_eq!(sm.sequence().len(), 3);
-
-        assert_eq!(*sm.sequence().get(0).unwrap(), tke!(L1 LEFTCTRL Down 0));
-        assert_eq!(*sm.sequence().get(1).unwrap(), tke!(L1 J Down 100));
-        assert_eq!(*sm.sequence().get(2).unwrap(), tke!(L1 LEFTCTRL Up 200));
-    }
-
-    #[test]
     fn can_print_sequence() {
         let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
         let mut sm = SequenceManager::new();
@@ -110,17 +73,29 @@ mod sequence_manager_module_test {
     }
 
     #[test]
-    fn can_record_output_string() {
+    fn pressing_J() {
+        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
+        let mut sm = SequenceManager::new();
+
+        sm.receive(tke!(L1 J Down 0));
+        assert_eq!(sm.output(), "");
+
+        sm.receive(tke!(L1 J Up 100));
+        assert_eq!(sm.output(), "L1 J Down");
+    }
+
+    #[test]
+    fn CTRL_J_sequence() {
         let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
         let mut sm = SequenceManager::new();
 
         sm.receive(tke!(L1 LEFTCTRL Down 0));
         assert_eq!(sm.output(), "");
 
-        sm.receive(tke!(L1 J Down 50));
+        sm.receive(tke!(L1 J Down 100));
         assert_eq!(sm.output(), "");
 
-        sm.receive(tke!(L1 J Up 100));
+        sm.receive(tke!(L1 J Up 200));
         assert_eq!(sm.output(), "L1 LEFTCTRL Down, L1 J Down");
     }
 }

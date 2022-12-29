@@ -5,7 +5,11 @@ use std::{
     time::SystemTime,
 };
 
-use crate::devices::{self, input::EventKindCheck, output::event_from_code};
+use crate::{
+    devices::{self, input::EventKindCheck, output::event_from_code},
+    event_processor::sequence_manager::SequenceManager,
+    stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
+};
 
 enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
@@ -19,16 +23,20 @@ fn mock_device_alias() -> HashMap<&'static str, &'static str> {
     ])
 }
 
-fn in_the_end() -> HashMap<&'static str, &'static str> {
+fn rules_to_print() -> HashMap<&'static str, &'static str> {
     HashMap::from([
-        ("L1 LEFTCTRL Down, L1 J Down", "my first mapping"),
+        ("L1 LEFTCTRL Down, R1 J Down", "my first mapping"),
         ("L1 LEFTCTRL Down, R1 K Down", "my second mapping"),
+        ("L1 S Down, R1 O Down", "my third mapping: SO"),
+        ("R1 O Down, L1 S Down", "my third mapping: O then S"),
+        ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
     ])
 }
 
 pub fn start() {
     // Development Variables
     let alias_map = mock_device_alias();
+    let rules_to_print = rules_to_print();
 
     // Message Channels
     let (tx, rx) = mpsc::channel();
@@ -39,11 +47,46 @@ pub fn start() {
 
     // Interception
     let mut virtual_device = devices::output::new().unwrap();
+    let mut sm = SequenceManager::new();
+
+    let l1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
+    let r1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
 
     for signal in rx {
         match signal {
-            TransmitSignal::Key(_device_alias, code, value, _timestamp) => {
-                emit_only_on_key_up_experiment(value, code, &mut virtual_device);
+            TransmitSignal::Key(device_alias, code, value, timestamp) => {
+                // HACK:
+                let mut device = &l1;
+                if device_alias != "L1" {
+                    device = &r1;
+                }
+
+                let key = KeyIdentifier::new(device, code);
+                let event = KeyboardEvent::new(key, value, timestamp);
+
+                sm.receive(event);
+
+                // FRAUD:
+                if let Some(msg) = rules_to_print.get(sm.output().as_str()) {
+                    let split: Vec<&str> = msg.split("MAP_CODE: ").collect();
+
+                    if split.last().is_some() {
+                        let code: u16 = split.last().unwrap().parse().unwrap();
+
+                        let kb_down_event = event_from_code(code, 1);
+                        let kb_up_event = event_from_code(code, 0);
+
+                        virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+                    } else {
+                        println!("{msg}");
+                    }
+
+                    sm.set_emitted(true);
+                } else {
+                    // println!("{}", sm.output());
+
+                    emit_only_on_key_up_experiment(value, code, &mut virtual_device, *sm.emitted());
+                }
             }
         }
     }
@@ -53,15 +96,16 @@ fn emit_only_on_key_up_experiment(
     value: i32,
     code: u16,
     virtual_device: &mut evdev::uinput::VirtualDevice,
+    emitted: bool,
 ) {
-    let keys_to_skip: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+    let key_codes_to_skip: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
 
-    if keys_to_skip.contains(&code) {
+    if key_codes_to_skip.contains(&code) {
         let event = event_from_code(code, value);
         virtual_device.emit(&[event]).unwrap();
     }
 
-    if !keys_to_skip.contains(&code) && value == 0 {
+    if !key_codes_to_skip.contains(&code) && value == 0 && !emitted {
         let kb_down_event = event_from_code(code, 1);
         let kb_up_event = event_from_code(code, 0);
 

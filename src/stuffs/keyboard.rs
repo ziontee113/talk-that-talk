@@ -1,4 +1,4 @@
-#[derive(Getters, PartialEq, Eq, Debug)]
+#[derive(Getters, PartialEq, Eq, Debug, Clone)]
 pub struct Keyboard {
     #[getset(get = "pub")]
     alias: String,
