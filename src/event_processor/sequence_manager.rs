@@ -4,21 +4,29 @@ use crate::stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent};
 struct SequenceManager<'a> {
     #[getset(get = "pub")]
     sequence: Vec<KeyboardEvent<'a>>,
+
+    #[getset(get = "pub")]
+    output: String,
 }
 
 impl<'a> SequenceManager<'a> {
     fn new() -> Self {
-        Self { sequence: vec![] }
+        Self {
+            sequence: vec![],
+            output: String::new(),
+        }
     }
 
     fn receive(&mut self, event: KeyboardEvent<'a>) {
+        self.output = String::new();
+
         match event.value() {
             KeyState::Down => {
                 self.add_event(event);
             }
             KeyState::Up => {
                 if event.key() == self.sequence.last().unwrap().key() {
-                    self.sequence_as_string();
+                    self.output = self.sequence_as_string();
 
                     self.sequence.pop();
                 } else {
@@ -99,5 +107,20 @@ mod sequence_manager_module_test {
 
         sm.receive(tke!(L1 J Down 50));
         assert_eq!(sm.sequence_as_string(), "L1 LEFTCTRL Down, L1 J Down");
+    }
+
+    #[test]
+    fn can_record_output_string() {
+        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
+        let mut sm = SequenceManager::new();
+
+        sm.receive(tke!(L1 LEFTCTRL Down 0));
+        assert_eq!(sm.output(), "");
+
+        sm.receive(tke!(L1 J Down 50));
+        assert_eq!(sm.output(), "");
+
+        sm.receive(tke!(L1 J Up 100));
+        assert_eq!(sm.output(), "L1 LEFTCTRL Down, L1 J Down");
     }
 }

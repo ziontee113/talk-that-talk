@@ -12,10 +12,17 @@ enum TransmitSignal {
 }
 
 // for development purposes only
-pub fn mock_device_alias() -> HashMap<&'static str, &'static str> {
+fn mock_device_alias() -> HashMap<&'static str, &'static str> {
     HashMap::from([
         ("L1", "usb-0000:00:1d.0-1.5.1.4/input0"),
         ("R1", "usb-0000:00:1d.0-1.5.2/input0"),
+    ])
+}
+
+fn in_the_end() -> HashMap<&'static str, &'static str> {
+    HashMap::from([
+        ("L1 LEFTCTRL Down, L1 J Down", "my first mapping"),
+        ("L1 LEFTCTRL Down, R1 K Down", "my second mapping"),
     ])
 }
 
