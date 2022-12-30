@@ -16,13 +16,14 @@ enum TransmitSignal {
 }
 
 // for development purposes only
-fn mock_device_alias() -> HashMap<&'static str, &'static str> {
-    HashMap::from([
-        ("L1", "usb-0000:00:1d.0-1.5.1.4/input0"),
-        ("R1", "usb-0000:00:1d.0-1.5.2/input0"),
-    ])
+fn mock_keyboard_devices() -> Vec<Keyboard> {
+    vec![
+        Keyboard::new("L1", "Left Keyboard", "usb-0000:00:1d.0-1.5.1.4/input0"),
+        Keyboard::new("R1", "Right Keyboard", "usb-0000:00:1d.0-1.5.2/input0"),
+    ]
 }
 
+// for development purposes only
 fn rules_to_print() -> HashMap<&'static str, &'static str> {
     HashMap::from([
         ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
@@ -37,58 +38,51 @@ fn rules_to_print() -> HashMap<&'static str, &'static str> {
 
 pub fn start() {
     // Development Variables
-    let alias_map = mock_device_alias();
+    let keyboard_devices = mock_keyboard_devices();
     let rules_to_print = rules_to_print();
 
     // Message Channels
     let (tx, rx) = mpsc::channel();
 
-    for (device_alias, device_path) in alias_map {
-        intercept(tx.clone(), device_alias, device_path);
+    for keyboard in &keyboard_devices {
+        intercept(tx.clone(), keyboard);
     }
 
     // Interception
     let mut virtual_device = devices::output::new().unwrap();
     let mut sm = SequenceManager::new();
 
-    let l1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-    let r1 = Keyboard::new("R1", "My Right Keyboard", "usb/1/1/input0");
-
     for signal in rx {
         match signal {
             TransmitSignal::Key(device_alias, code, value, timestamp) => {
-                // HACK:
-                let mut device = &l1;
-                if device_alias != "L1" {
-                    device = &r1;
-                }
+                if let Some(device) = keyboard_devices.iter().find(|d| *d.alias() == device_alias) {
+                    let key = KeyIdentifier::new(device, code);
+                    let event = KeyboardEvent::new(key, value, timestamp);
 
-                let key = KeyIdentifier::new(device, code);
-                let event = KeyboardEvent::new(key, value, timestamp);
+                    sm.receive(event);
 
-                sm.receive(event);
+                    // FRAUD:
+                    if let Some(msg) = rules_to_print.get(sm.output().as_str()) {
+                        let pat = "MAP_CODE: ";
+                        let split: Vec<&str> = msg.split("MAP_CODE: ").collect();
 
-                // FRAUD:
-                if let Some(msg) = rules_to_print.get(sm.output().as_str()) {
-                    let pat = "MAP_CODE: ";
-                    let split: Vec<&str> = msg.split("MAP_CODE: ").collect();
+                        if msg.contains(pat) {
+                            let code: u16 = split.last().unwrap().parse().unwrap();
 
-                    if msg.contains(pat) {
-                        let code: u16 = split.last().unwrap().parse().unwrap();
+                            let kb_down_event = event_from_code(code, 1);
+                            let kb_up_event = event_from_code(code, 0);
 
-                        let kb_down_event = event_from_code(code, 1);
-                        let kb_up_event = event_from_code(code, 0);
-
-                        if !sm.emitted() {
-                            virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+                            if !sm.emitted() {
+                                virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
+                            }
+                        } else {
+                            println!("{msg}");
                         }
-                    } else {
-                        println!("{msg}");
-                    }
 
-                    sm.set_emitted(true);
-                } else {
-                    emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
+                        sm.set_emitted(true);
+                    } else {
+                        emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
+                    }
                 }
             }
         }
@@ -134,14 +128,15 @@ fn emit_only_on_key_up_experiment(
     }
 }
 
-fn intercept(rx: Sender<TransmitSignal>, device_alias: &str, device_path: &str) {
-    let device_alias = device_alias.to_string();
+fn intercept(rx: Sender<TransmitSignal>, device: &Keyboard) {
+    let alias = device.alias().clone();
+    let path = device.path();
 
-    let mut d = devices::input::from_path(device_path);
+    let mut d = devices::input::from_path(path);
     match d.grab() {
-        Ok(_) => println!("Grabbed {device_alias} {device_path} SUCCESSFULLY"),
+        Ok(_) => println!("Grabbed {alias} {path} SUCCESSFULLY"),
         Err(err) => {
-            println!("FAILED TO GRAB {device_alias} {device_path},\n{err},\n------------------");
+            println!("FAILED TO GRAB {alias} {path},\n{err},\n------------------",);
         }
     }
 
@@ -152,7 +147,7 @@ fn intercept(rx: Sender<TransmitSignal>, device_alias: &str, device_path: &str) 
                 for ev in events {
                     if ev.is_type_key() {
                         rx.send(TransmitSignal::Key(
-                            device_alias.to_string(),
+                            alias.to_string(),
                             ev.code(),
                             ev.value(),
                             ev.timestamp(),
