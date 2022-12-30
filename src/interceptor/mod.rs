@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    devices::{self, input::EventKindCheck, output::event_from_code},
+    devices::{self, input::EventKindCheck, output::virtual_event},
     event_processor::sequence_manager::SequenceManager,
     stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
@@ -24,7 +24,7 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 }
 
 // for development purposes only
-fn rules_to_print() -> HashMap<&'static str, &'static str> {
+fn create_mock_ruleset() -> HashMap<&'static str, &'static str> {
     HashMap::from([
         ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
         ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: 105"),
@@ -39,7 +39,7 @@ fn rules_to_print() -> HashMap<&'static str, &'static str> {
 pub fn start() {
     // Development Variables
     let keyboard_devices = mock_keyboard_devices();
-    let rules_to_print = rules_to_print();
+    let ruleset = create_mock_ruleset();
 
     // Message Channels
     let (tx, rx) = mpsc::channel();
@@ -62,21 +62,15 @@ pub fn start() {
                     sm.receive(event);
 
                     // FRAUD:
-                    if let Some(msg) = rules_to_print.get(sm.output().as_str()) {
-                        let pat = "MAP_CODE: ";
-                        let split: Vec<&str> = msg.split("MAP_CODE: ").collect();
+                    let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
+                    if let Some(rule) = get_rule_from_ruleset {
+                        let emit_pattern = "MAP_CODE: ";
+                        let split: Vec<&str> = rule.split(emit_pattern).collect();
 
-                        if msg.contains(pat) {
-                            let code: u16 = split.last().unwrap().parse().unwrap();
-
-                            let kb_down_event = event_from_code(code, 1);
-                            let kb_up_event = event_from_code(code, 0);
-
-                            if !sm.emitted() {
-                                virtual_device.emit(&[kb_down_event, kb_up_event]).unwrap();
-                            }
+                        if rule.contains(emit_pattern) {
+                            emit_mapped_key(&split, &sm, &mut virtual_device);
                         } else {
-                            println!("{msg}");
+                            println!("{rule}");
                         }
 
                         sm.set_emitted(true);
@@ -86,6 +80,19 @@ pub fn start() {
                 }
             }
         }
+    }
+}
+
+fn emit_mapped_key(
+    split: &[&str],
+    sm: &SequenceManager,
+    virtual_device: &mut evdev::uinput::VirtualDevice,
+) {
+    let code: u16 = split.last().unwrap().parse().unwrap();
+    if !sm.emitted() {
+        virtual_device
+            .emit(&[virtual_event(code, 1), virtual_event(code, 0)])
+            .unwrap();
     }
 }
 
@@ -103,7 +110,7 @@ fn emit_only_on_key_up_experiment(
     }
 
     if modifiers.contains(&code) {
-        let event = event_from_code(code, value);
+        let event = virtual_event(code, value);
         virtual_device.emit(&[event]).unwrap();
     }
 
@@ -111,16 +118,16 @@ fn emit_only_on_key_up_experiment(
         // handle down events
         let mut events = vec![];
         for modifier_code in sm.modifiers() {
-            events.push(event_from_code(*modifier_code, 1));
+            events.push(virtual_event(*modifier_code, 1));
         }
-        events.push(event_from_code(code, 1));
+        events.push(virtual_event(code, 1));
 
         // handle up events
         let mut up_events = vec![];
         for modifier_code in sm.modifiers() {
-            up_events.push(event_from_code(*modifier_code, 0));
+            up_events.push(virtual_event(*modifier_code, 0));
         }
-        up_events.push(event_from_code(code, 0));
+        up_events.push(virtual_event(code, 0));
 
         // append and emit
         events.append(&mut up_events);

@@ -14,6 +14,6 @@ pub fn new() -> Result<VirtualDevice, io::Error> {
         .build()
 }
 
-pub fn event_from_code(key_code: u16, key_value: i32) -> InputEvent {
+pub fn virtual_event(key_code: u16, key_value: i32) -> InputEvent {
     InputEvent::new(EventType::KEY, key_code, key_value)
 }
