@@ -14,8 +14,9 @@ use crate::{
     },
 };
 
-enum TransmitSignal {
+pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
+    NeovimCWD(String),
 }
 
 // for development purposes only
@@ -29,16 +30,16 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 // for development purposes only
 fn create_mock_ruleset() -> HashMap<&'static str, &'static str> {
     HashMap::from([
-        ("L1 CAPSLOCK Down", "MAP_CODE: ESC"),
-        ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: Left"),
-        ("L1 CAPSLOCK Down, R1 J Down", "MAP_CODE: Down"),
-        ("L1 CAPSLOCK Down, R1 K Down", "MAP_CODE: Up"),
-        ("L1 CAPSLOCK Down, R1 L Down", "MAP_CODE: Right"),
-        ("L1 H Down, R1 J Down", "MAP_CODE: VolumeDown"),
-        ("L1 H Down, R1 K Down", "MAP_CODE: VolumeUp"),
-        ("L1 H Down, R1 P Down", "MAP_CODE: PreviousSong"),
-        ("L1 H Down, R1 N Down", "MAP_CODE: NextSong"),
-        ("L1 H Down, R1 I Down", "MAP_CODE: PlayPause"),
+        ("L1 CAPSLOCK Down", "MAP_TO: ESC"),
+        ("L1 CAPSLOCK Down, R1 H Down", "MAP_TO: Left"),
+        ("L1 CAPSLOCK Down, R1 J Down", "MAP_TO: Down"),
+        ("L1 CAPSLOCK Down, R1 K Down", "MAP_TO: Up"),
+        ("L1 CAPSLOCK Down, R1 L Down", "MAP_TO: Right"),
+        ("L1 H Down, R1 J Down", "MAP_TO: VolumeDown"),
+        ("L1 H Down, R1 K Down", "MAP_TO: VolumeUp"),
+        ("L1 H Down, R1 P Down", "MAP_TO: PreviousSong"),
+        ("L1 H Down, R1 N Down", "MAP_TO: NextSong"),
+        ("L1 H Down, R1 I Down", "MAP_TO: PlayPause"),
     ])
 }
 
@@ -54,12 +55,18 @@ pub fn start() {
         intercept(tx.clone(), keyboard);
     }
 
+    // HTTP server
+    crate::http_server::start_server(tx);
+
     // Interception
     let mut virtual_device = devices::output::new().unwrap();
     let mut sm = SequenceManager::new();
 
     for signal in rx {
         match signal {
+            TransmitSignal::NeovimCWD(cwd) => {
+                println!("Neovim instance at: {cwd}");
+            }
             TransmitSignal::Key(device_alias, code, value, timestamp) => {
                 if let Some(device) = keyboard_devices.iter().find(|d| *d.alias() == device_alias) {
                     let key = KeyIdentifier::new(device, code);
@@ -70,7 +77,7 @@ pub fn start() {
                     // FRAUD:
                     let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
                     if let Some(rule) = get_rule_from_ruleset {
-                        let emit_pattern = "MAP_CODE: ";
+                        let emit_pattern = "MAP_TO: ";
                         let split: Vec<&str> = rule.split(emit_pattern).collect();
 
                         if rule.contains(emit_pattern) {
@@ -141,7 +148,7 @@ fn emit_only_on_key_up_experiment(
     }
 }
 
-fn intercept(rx: Sender<TransmitSignal>, device: &Keyboard) {
+fn intercept(tx: Sender<TransmitSignal>, device: &Keyboard) {
     let alias = device.alias().clone();
     let path = device.path();
 
@@ -159,7 +166,7 @@ fn intercept(rx: Sender<TransmitSignal>, device: &Keyboard) {
             Ok(events) => {
                 for ev in events {
                     if ev.is_type_key() {
-                        rx.send(TransmitSignal::Key(
+                        tx.send(TransmitSignal::Key(
                             alias.to_string(),
                             ev.code(),
                             ev.value(),
