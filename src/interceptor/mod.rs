@@ -8,7 +8,10 @@ use std::{
 use crate::{
     devices::{self, input::EventKindCheck, output::virtual_event},
     event_processor::sequence_manager::SequenceManager,
-    stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
+    stuffs::{
+        key_code::KeyCode, key_identifier::KeyIdentifier, keyboard::Keyboard,
+        keyboard_event::KeyboardEvent,
+    },
 };
 
 enum TransmitSignal {
@@ -26,13 +29,16 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 // for development purposes only
 fn create_mock_ruleset() -> HashMap<&'static str, &'static str> {
     HashMap::from([
-        ("L1 CAPSLOCK Down", "MAP_CODE: 1"),
-        ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: 105"),
-        ("L1 CAPSLOCK Down, R1 J Down", "MAP_CODE: 108"),
-        ("L1 CAPSLOCK Down, R1 K Down", "MAP_CODE: 103"),
-        ("L1 CAPSLOCK Down, R1 L Down", "MAP_CODE: 106"),
-        ("L1 H Down, R1 J Down", "MAP_CODE: 114"),
-        ("L1 H Down, R1 K Down", "MAP_CODE: 115"),
+        ("L1 CAPSLOCK Down", "MAP_CODE: ESC"),
+        ("L1 CAPSLOCK Down, R1 H Down", "MAP_CODE: Left"),
+        ("L1 CAPSLOCK Down, R1 J Down", "MAP_CODE: Down"),
+        ("L1 CAPSLOCK Down, R1 K Down", "MAP_CODE: Up"),
+        ("L1 CAPSLOCK Down, R1 L Down", "MAP_CODE: Right"),
+        ("L1 H Down, R1 J Down", "MAP_CODE: VolumeDown"),
+        ("L1 H Down, R1 K Down", "MAP_CODE: VolumeUp"),
+        ("L1 H Down, R1 P Down", "MAP_CODE: PreviousSong"),
+        ("L1 H Down, R1 N Down", "MAP_CODE: NextSong"),
+        ("L1 H Down, R1 I Down", "MAP_CODE: PlayPause"),
     ])
 }
 
@@ -88,7 +94,7 @@ fn emit_mapped_key(
     sm: &SequenceManager,
     virtual_device: &mut evdev::uinput::VirtualDevice,
 ) {
-    let code: u16 = split.last().unwrap().parse().unwrap();
+    let code = KeyCode::from(*split.last().unwrap()).0;
     if !sm.emitted() {
         virtual_device
             .emit(&[virtual_event(code, 1), virtual_event(code, 0)])
