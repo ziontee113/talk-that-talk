@@ -10,13 +10,10 @@ use std::{
 use crate::{
     devices::{self, input::EventKindCheck, output::virtual_event},
     event_processor::sequence_manager::SequenceManager,
-    stuffs::{
-        key_code::KeyCode, key_identifier::KeyIdentifier, keyboard::Keyboard,
-        keyboard_event::KeyboardEvent,
-    },
+    stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
 
-use self::rule_output::Output;
+use self::rule_output::{emit_cmd, emit_mapped_key, Output};
 
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
@@ -34,16 +31,21 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 // for development purposes only
 fn create_mock_ruleset() -> HashMap<&'static str, Output> {
     HashMap::from([
+        // Escape Key
         ("L1 CAPSLOCK Down", Output::Map("Esc")),
+        // Arrow Keys
         ("L1 CAPSLOCK Down, R1 H Down", Output::Map("Left")),
         ("L1 CAPSLOCK Down, R1 J Down", Output::Map("Down")),
         ("L1 CAPSLOCK Down, R1 K Down", Output::Map("Up")),
         ("L1 CAPSLOCK Down, R1 L Down", Output::Map("Right")),
+        // Playback Keys
         ("L1 H Down, R1 J Down", Output::Map("VolumeDown")),
         ("L1 H Down, R1 K Down", Output::Map("VolumeUp")),
         ("L1 H Down, R1 P Down", Output::Map("PreviousSong")),
         ("L1 H Down, R1 N Down", Output::Map("NextSong")),
         ("L1 H Down, R1 I Down", Output::Map("PlayPause")),
+        // Cmd Test
+        ("L1 S Down, R1 O Down", Output::Cmd("kitty", vec![])),
     ])
 }
 
@@ -82,12 +84,10 @@ pub fn start() {
                     let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
                     if let Some(rule) = get_rule_from_ruleset {
                         match rule {
-                            Output::Map(map_str) => {
-                                emit_mapped_key(map_str, &sm, &mut virtual_device);
+                            Output::Map(mapping) => {
+                                emit_mapped_key(mapping, &sm, &mut virtual_device);
                             }
-                            Output::Cmd(cmd) => {
-                                todo!()
-                            }
+                            Output::Cmd(cmd, args) => emit_cmd(cmd, args, &sm),
                         }
 
                         sm.set_emitted(true);
@@ -97,19 +97,6 @@ pub fn start() {
                 }
             }
         }
-    }
-}
-
-fn emit_mapped_key(
-    key: &str,
-    sm: &SequenceManager,
-    virtual_device: &mut evdev::uinput::VirtualDevice,
-) {
-    let code = KeyCode::from(key).0;
-    if !sm.emitted() {
-        virtual_device
-            .emit(&[virtual_event(code, 1), virtual_event(code, 0)])
-            .unwrap();
     }
 }
 
