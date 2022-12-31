@@ -1,3 +1,5 @@
+mod rule_output;
+
 use std::{
     collections::HashMap,
     sync::mpsc::{self, Sender},
@@ -14,6 +16,8 @@ use crate::{
     },
 };
 
+use self::rule_output::Output;
+
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
     NeovimCWD(String),
@@ -28,18 +32,18 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 }
 
 // for development purposes only
-fn create_mock_ruleset() -> HashMap<&'static str, &'static str> {
+fn create_mock_ruleset() -> HashMap<&'static str, Output> {
     HashMap::from([
-        ("L1 CAPSLOCK Down", "MAP_TO: ESC"),
-        ("L1 CAPSLOCK Down, R1 H Down", "MAP_TO: Left"),
-        ("L1 CAPSLOCK Down, R1 J Down", "MAP_TO: Down"),
-        ("L1 CAPSLOCK Down, R1 K Down", "MAP_TO: Up"),
-        ("L1 CAPSLOCK Down, R1 L Down", "MAP_TO: Right"),
-        ("L1 H Down, R1 J Down", "MAP_TO: VolumeDown"),
-        ("L1 H Down, R1 K Down", "MAP_TO: VolumeUp"),
-        ("L1 H Down, R1 P Down", "MAP_TO: PreviousSong"),
-        ("L1 H Down, R1 N Down", "MAP_TO: NextSong"),
-        ("L1 H Down, R1 I Down", "MAP_TO: PlayPause"),
+        ("L1 CAPSLOCK Down", Output::Map("Esc")),
+        ("L1 CAPSLOCK Down, R1 H Down", Output::Map("Left")),
+        ("L1 CAPSLOCK Down, R1 J Down", Output::Map("Down")),
+        ("L1 CAPSLOCK Down, R1 K Down", Output::Map("Up")),
+        ("L1 CAPSLOCK Down, R1 L Down", Output::Map("Right")),
+        ("L1 H Down, R1 J Down", Output::Map("VolumeDown")),
+        ("L1 H Down, R1 K Down", Output::Map("VolumeUp")),
+        ("L1 H Down, R1 P Down", Output::Map("PreviousSong")),
+        ("L1 H Down, R1 N Down", Output::Map("NextSong")),
+        ("L1 H Down, R1 I Down", Output::Map("PlayPause")),
     ])
 }
 
@@ -77,13 +81,13 @@ pub fn start() {
                     // FRAUD:
                     let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
                     if let Some(rule) = get_rule_from_ruleset {
-                        let emit_pattern = "MAP_TO: ";
-                        let split: Vec<&str> = rule.split(emit_pattern).collect();
-
-                        if rule.contains(emit_pattern) {
-                            emit_mapped_key(&split, &sm, &mut virtual_device);
-                        } else {
-                            println!("{rule}");
+                        match rule {
+                            Output::Map(map_str) => {
+                                emit_mapped_key(map_str, &sm, &mut virtual_device);
+                            }
+                            Output::Cmd(cmd) => {
+                                todo!()
+                            }
                         }
 
                         sm.set_emitted(true);
@@ -97,11 +101,11 @@ pub fn start() {
 }
 
 fn emit_mapped_key(
-    split: &[&str],
+    key: &str,
     sm: &SequenceManager,
     virtual_device: &mut evdev::uinput::VirtualDevice,
 ) {
-    let code = KeyCode::from(*split.last().unwrap()).0;
+    let code = KeyCode::from(key).0;
     if !sm.emitted() {
         virtual_device
             .emit(&[virtual_event(code, 1), virtual_event(code, 0)])
