@@ -119,7 +119,7 @@ pub fn start() {
                             println!("{}", sm.output());
                             emit_nvim_msg(
                                 &current_nvim_directory,
-                                format!(":lua REMOTE_MAPPING('{}')<CR>", sm.output()),
+                                format!("<Plug>{}", sm.output()),
                             );
                             sm.set_emitted(true);
                         }
