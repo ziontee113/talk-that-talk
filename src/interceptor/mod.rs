@@ -13,7 +13,7 @@ use crate::{
     stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
 
-use self::rule_output::{emit_cmd, emit_mapped_key, emit_nvim_msg, Output};
+use self::rule_output::{emit_cmd, emit_mapped_key, emit_nvim_msg, emit_sequence, Output};
 
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
@@ -51,15 +51,20 @@ fn create_mock_ruleset() -> HashMap<&'static str, Output> {
             "L1 E Down, R1 K Down, R1 J Down",
             Output::Cmd("gedit", vec![]),
         ),
-        // Nvim Testing
-        ("L1 A Down, R1 J Down", Output::Nvim("4j")),
-        ("L1 A Down, R1 K Down", Output::Nvim("4k")),
-        ("L1 A Down, R1 H Down", Output::Nvim("8k")),
-        ("L1 A Down, R1 L Down", Output::Nvim("8j")),
-        // Testing the waters, why does this work?
-        ("L1 S Down, R1 O Down", Output::Nvim("4j")),
-        ("R1 O Down, R1 M Down", Output::Nvim("4k")),
-        ("L1 S Down, R1 M Down", Output::Nvim("4j")),
+        // // Nvim Testing
+        // ("L1 A Down, R1 J Down", Output::Nvim("4j")),
+        // ("L1 A Down, R1 K Down", Output::Nvim("4k")),
+        // ("L1 A Down, R1 H Down", Output::Nvim("8k")),
+        // ("L1 A Down, R1 L Down", Output::Nvim("8j")),
+        // // Testing the waters, why does this work?
+        // ("L1 S Down, R1 O Down", Output::Nvim("4j")),
+        // ("R1 O Down, R1 M Down", Output::Nvim("4k")),
+        // ("L1 S Down, R1 M Down", Output::Nvim("4j")),
+        // Remap Right Alt to <C-F1>
+        (
+            "R1 RIGHTALT Down",
+            Output::Sequence(vec![("LeftCtrl", 1), ("F1", 1), ("F1", 0), ("LeftCtrl", 0)]),
+        ),
     ])
 }
 
@@ -106,17 +111,19 @@ pub fn start() {
                             Output::Nvim(msg) => {
                                 emit_nvim_msg(&current_nvim_directory, *msg);
                             }
+                            Output::Sequence(sequence) => {
+                                emit_sequence(sequence, &mut virtual_device);
+                            }
                         }
 
                         sm.set_emitted(true);
                     }
 
                     if !sm.emitted() && sm.output().contains(',') {
-                        let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+                        let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 125, 126];
                         let first_code = sm.sequence().first().unwrap().key().code().0;
 
                         if !modifiers.contains(&first_code) {
-                            println!("{}", sm.output());
                             emit_nvim_msg(
                                 &current_nvim_directory,
                                 format!("<Plug>{}", sm.output()),
@@ -141,7 +148,7 @@ fn emit_only_on_key_up_experiment(
     virtual_device: &mut evdev::uinput::VirtualDevice,
     sm: &SequenceManager,
 ) {
-    let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+    let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 125, 126];
     let ignore_list: Vec<u16> = vec![58];
 
     if ignore_list.contains(&code) {

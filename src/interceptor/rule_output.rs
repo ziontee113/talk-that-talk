@@ -11,6 +11,7 @@ pub enum Output {
     Map(&'static str),
     Cmd(&'static str, Vec<&'static str>),
     Nvim(&'static str),
+    Sequence(Vec<(&'static str, i32)>),
 }
 
 pub fn emit_mapped_key(key: &str, sm: &SequenceManager, virtual_device: &mut VirtualDevice) {
@@ -34,5 +35,14 @@ pub fn emit_nvim_msg<S: Into<String>>(cwd: &str, msg: S) {
 pub fn emit_cmd(cmd: &str, args: &[&str], sm: &SequenceManager) {
     if !sm.emitted() {
         Command::new(cmd).args(args).spawn().ok();
+    }
+}
+
+pub fn emit_sequence(sequence: &Vec<(&str, i32)>, virtual_device: &mut VirtualDevice) {
+    for e in sequence {
+        let code = KeyCode::from(e.0).0;
+        let event = virtual_event(code, e.1);
+
+        virtual_device.emit(&[event]).unwrap();
     }
 }
