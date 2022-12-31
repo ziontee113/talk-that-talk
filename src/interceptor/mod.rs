@@ -51,8 +51,15 @@ fn create_mock_ruleset() -> HashMap<&'static str, Output> {
             "L1 E Down, R1 K Down, R1 J Down",
             Output::Cmd("gedit", vec![]),
         ),
+        // Nvim Testing
         ("L1 A Down, R1 J Down", Output::Nvim("4j")),
         ("L1 A Down, R1 K Down", Output::Nvim("4k")),
+        ("L1 A Down, R1 H Down", Output::Nvim("8k")),
+        ("L1 A Down, R1 L Down", Output::Nvim("8j")),
+        // Testing the waters, why does this work?
+        ("L1 S Down, R1 O Down", Output::Nvim("4j")),
+        ("R1 O Down, R1 M Down", Output::Nvim("4k")),
+        ("L1 S Down, R1 M Down", Output::Nvim("4j")),
     ])
 }
 
@@ -88,7 +95,7 @@ pub fn start() {
 
                     sm.receive(event);
 
-                    // FRAUD:
+                    // FRAUD_START:
                     let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
                     if let Some(rule) = get_rule_from_ruleset {
                         match rule {
@@ -97,14 +104,31 @@ pub fn start() {
                             }
                             Output::Cmd(cmd, args) => emit_cmd(cmd, args, &sm),
                             Output::Nvim(msg) => {
-                                emit_nvim_msg(&current_nvim_directory, msg);
+                                emit_nvim_msg(&current_nvim_directory, *msg);
                             }
                         }
 
                         sm.set_emitted(true);
-                    } else {
+                    }
+
+                    if !sm.emitted() && sm.output().contains(',') {
+                        let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 100, 125, 126];
+                        let first_code = sm.sequence().first().unwrap().key().code().0;
+
+                        if !modifiers.contains(&first_code) {
+                            println!("{}", sm.output());
+                            emit_nvim_msg(
+                                &current_nvim_directory,
+                                format!(":lua REMOTE_MAPPING('{}')<CR>", sm.output()),
+                            );
+                            sm.set_emitted(true);
+                        }
+                    }
+
+                    if !sm.emitted() {
                         emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
                     }
+                    // FRAUD_END:
                 }
             }
         }

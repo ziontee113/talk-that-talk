@@ -22,11 +22,11 @@ pub fn emit_mapped_key(key: &str, sm: &SequenceManager, virtual_device: &mut Vir
     }
 }
 
-pub fn emit_nvim_msg(cwd: &str, msg: &str) {
+pub fn emit_nvim_msg<S: Into<String>>(cwd: &str, msg: S) {
     let pipe = cwd.to_owned() + "/nvim.pipe";
 
     Command::new("nvim")
-        .args(["--server", &pipe, "--remote-send", msg])
+        .args(["--server", &pipe, "--remote-send", &msg.into()])
         .spawn()
         .ok();
 }
