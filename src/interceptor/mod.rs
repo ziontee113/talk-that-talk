@@ -13,7 +13,7 @@ use crate::{
     stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
 
-use self::rule_output::{emit_cmd, emit_mapped_key, Output};
+use self::rule_output::{emit_cmd, emit_mapped_key, emit_nvim_msg, Output};
 
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
@@ -45,7 +45,14 @@ fn create_mock_ruleset() -> HashMap<&'static str, Output> {
         ("L1 H Down, R1 N Down", Output::Map("NextSong")),
         ("L1 H Down, R1 I Down", Output::Map("PlayPause")),
         // Cmd Test
-        ("L1 S Down, R1 O Down", Output::Cmd("kitty", vec![])),
+        ("L1 E Down, R1 K Down", Output::Cmd("kitty", vec![])),
+        ("L1 E Down, L1 F Down", Output::Cmd("firefox", vec![])),
+        (
+            "L1 E Down, R1 K Down, R1 J Down",
+            Output::Cmd("gedit", vec![]),
+        ),
+        ("L1 A Down, R1 J Down", Output::Nvim("4j")),
+        ("L1 A Down, R1 K Down", Output::Nvim("4k")),
     ])
 }
 
@@ -62,6 +69,7 @@ pub fn start() {
     }
 
     // HTTP server
+    let mut current_nvim_directory = String::new();
     crate::http_server::start_server(tx);
 
     // Interception
@@ -71,7 +79,7 @@ pub fn start() {
     for signal in rx {
         match signal {
             TransmitSignal::NeovimCWD(cwd) => {
-                println!("Neovim instance at: {cwd}");
+                current_nvim_directory = cwd;
             }
             TransmitSignal::Key(device_alias, code, value, timestamp) => {
                 if let Some(device) = keyboard_devices.iter().find(|d| *d.alias() == device_alias) {
@@ -88,6 +96,9 @@ pub fn start() {
                                 emit_mapped_key(mapping, &sm, &mut virtual_device);
                             }
                             Output::Cmd(cmd, args) => emit_cmd(cmd, args, &sm),
+                            Output::Nvim(msg) => {
+                                emit_nvim_msg(&current_nvim_directory, msg);
+                            }
                         }
 
                         sm.set_emitted(true);
