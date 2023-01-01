@@ -13,11 +13,14 @@ use crate::{
     stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
 
-use self::rule_output::{emit_cmd, emit_mapped_key, emit_nvim_msg, emit_sequence, Output};
+use self::rule_output::{
+    emit_cmd, emit_mapped_key, emit_nvim_msg, emit_sequence, send_back, Output,
+};
 
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
     NeovimCWD(String),
+    NeovimTCPPort(String),
 }
 
 // for development purposes only
@@ -51,15 +54,6 @@ fn create_mock_ruleset() -> HashMap<&'static str, Output> {
             "L1 E Down, R1 K Down, R1 J Down",
             Output::Cmd("gedit", vec![]),
         ),
-        // // Nvim Testing
-        // ("L1 A Down, R1 J Down", Output::Nvim("4j")),
-        // ("L1 A Down, R1 K Down", Output::Nvim("4k")),
-        // ("L1 A Down, R1 H Down", Output::Nvim("8k")),
-        // ("L1 A Down, R1 L Down", Output::Nvim("8j")),
-        // // Testing the waters, why does this work?
-        // ("L1 S Down, R1 O Down", Output::Nvim("4j")),
-        // ("R1 O Down, R1 M Down", Output::Nvim("4k")),
-        // ("L1 S Down, R1 M Down", Output::Nvim("4j")),
         // Remap Right Alt to <C-F1>
         (
             "R1 RIGHTALT Down",
@@ -82,6 +76,8 @@ pub fn start() {
 
     // HTTP server
     let mut current_nvim_directory = String::new();
+    let mut nvim_port = String::new();
+
     crate::http_server::start_server(tx);
 
     // Interception
@@ -93,6 +89,10 @@ pub fn start() {
             TransmitSignal::NeovimCWD(cwd) => {
                 current_nvim_directory = cwd;
             }
+            TransmitSignal::NeovimTCPPort(port) => {
+                println!("{port}");
+                nvim_port = port;
+            }
             TransmitSignal::Key(device_alias, code, value, timestamp) => {
                 if let Some(device) = keyboard_devices.iter().find(|d| *d.alias() == device_alias) {
                     let key = KeyIdentifier::new(device, code);
@@ -102,6 +102,7 @@ pub fn start() {
 
                     // FRAUD_START:
                     let get_rule_from_ruleset = ruleset.get(sm.output().as_str());
+                    // EXPLAIN_THIS:
                     if let Some(rule) = get_rule_from_ruleset {
                         match rule {
                             Output::Map(mapping) => {
@@ -119,19 +120,21 @@ pub fn start() {
                         sm.set_emitted(true);
                     }
 
-                    if !sm.emitted() && sm.output().contains(',') {
+                    // AND_THIS:
+                    if !sm.emitted() && sm.is_combined() {
                         let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 125, 126];
-                        let first_code = sm.sequence().first().unwrap().key().code().0;
 
-                        if !modifiers.contains(&first_code) {
-                            emit_nvim_msg(
-                                &current_nvim_directory,
-                                format!("<Plug>{}", sm.output()),
-                            );
+                        if !modifiers.contains(&sm.first_code()) {
+                            send_back(&nvim_port, sm.output());
+                            // emit_nvim_msg(
+                            //     &current_nvim_directory,
+                            //     format!("<Plug>{}", sm.output()),
+                            // );
                             sm.set_emitted(true);
                         }
                     }
 
+                    // AND_THIS:
                     if !sm.emitted() {
                         emit_only_on_key_up_experiment(value, code, &mut virtual_device, &sm);
                     }

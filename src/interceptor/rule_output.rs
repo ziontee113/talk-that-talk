@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{io::Read, process::Command};
 
 use evdev::uinput::VirtualDevice;
 
@@ -45,4 +45,49 @@ pub fn emit_sequence(sequence: &Vec<(&str, i32)>, virtual_device: &mut VirtualDe
 
         virtual_device.emit(&[event]).unwrap();
     }
+}
+
+pub fn send_back(port: &str, msg: &str) {
+    let address = format!("localhost:{port}");
+
+    match std::net::TcpStream::connect(address.clone()) {
+        Ok(mut stream) => {
+            println!("Successfully connected to server in port {address}");
+
+            let msg = msg.as_bytes();
+
+            std::io::Write::write(&mut stream, msg).unwrap();
+            println!("Sent Hello, awaiting reply...");
+
+            let mut buffer = [0; 1024];
+            let read_result = stream.read(&mut buffer);
+
+            match read_result {
+                Ok(msg_length) => {
+                    let buffer = &buffer[..msg_length];
+
+                    if buffer == msg {
+                        println!("Reply is ok!");
+                    } else {
+                        let text = std::str::from_utf8(buffer).unwrap();
+                        println!("Unexpected reply: {text}");
+
+                        println!(
+                            "{} vs {}",
+                            std::str::from_utf8(buffer).unwrap(),
+                            std::str::from_utf8(msg).unwrap()
+                        );
+                    }
+                }
+                Err(e) => {
+                    println!("Failed to receive data: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            println!("tried to connect to: {address}");
+            println!("Failed to connect: {e}");
+        }
+    }
+    println!("Terminated.");
 }
