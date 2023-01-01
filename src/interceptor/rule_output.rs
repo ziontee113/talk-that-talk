@@ -10,7 +10,6 @@ use crate::{
 pub enum Output {
     Map(&'static str),
     Cmd(&'static str, Vec<&'static str>),
-    Nvim(&'static str),
     Sequence(Vec<(&'static str, i32)>),
 }
 
@@ -21,15 +20,6 @@ pub fn emit_mapped_key(key: &str, sm: &SequenceManager, virtual_device: &mut Vir
             .emit(&[virtual_event(code, 1), virtual_event(code, 0)])
             .unwrap();
     }
-}
-
-pub fn emit_nvim_msg<S: Into<String>>(cwd: &str, msg: S) {
-    let pipe = cwd.to_owned() + "/nvim.pipe";
-
-    Command::new("nvim")
-        .args(["--server", &pipe, "--remote-send", &msg.into()])
-        .spawn()
-        .ok();
 }
 
 pub fn emit_cmd(cmd: &str, args: &[&str], sm: &SequenceManager) {
@@ -47,17 +37,17 @@ pub fn emit_sequence(sequence: &Vec<(&str, i32)>, virtual_device: &mut VirtualDe
     }
 }
 
-pub fn send_back(port: &str, msg: &str) {
+pub fn send_signal_to_neovim(port: &str, msg: &str) {
     let address = format!("localhost:{port}");
 
     match std::net::TcpStream::connect(address.clone()) {
         Ok(mut stream) => {
             println!("Successfully connected to server in port {address}");
 
-            let msg = msg.as_bytes();
+            let msg_bytes = msg.as_bytes();
 
-            std::io::Write::write(&mut stream, msg).unwrap();
-            println!("Sent Hello, awaiting reply...");
+            std::io::Write::write(&mut stream, msg_bytes).unwrap();
+            println!("Sent {msg}, awaiting reply...");
 
             let mut buffer = [0; 1024];
             let read_result = stream.read(&mut buffer);
@@ -66,7 +56,7 @@ pub fn send_back(port: &str, msg: &str) {
                 Ok(msg_length) => {
                     let buffer = &buffer[..msg_length];
 
-                    if buffer == msg {
+                    if buffer == msg_bytes {
                         println!("Reply is ok!");
                     } else {
                         let text = std::str::from_utf8(buffer).unwrap();
@@ -75,7 +65,7 @@ pub fn send_back(port: &str, msg: &str) {
                         println!(
                             "{} vs {}",
                             std::str::from_utf8(buffer).unwrap(),
-                            std::str::from_utf8(msg).unwrap()
+                            std::str::from_utf8(msg_bytes).unwrap()
                         );
                     }
                 }
@@ -89,5 +79,4 @@ pub fn send_back(port: &str, msg: &str) {
             println!("Failed to connect: {e}");
         }
     }
-    println!("Terminated.");
 }

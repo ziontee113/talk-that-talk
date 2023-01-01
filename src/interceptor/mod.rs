@@ -13,13 +13,10 @@ use crate::{
     stuffs::{key_identifier::KeyIdentifier, keyboard::Keyboard, keyboard_event::KeyboardEvent},
 };
 
-use self::rule_output::{
-    emit_cmd, emit_mapped_key, emit_nvim_msg, emit_sequence, send_back, Output,
-};
+use self::rule_output::{emit_cmd, emit_mapped_key, emit_sequence, send_signal_to_neovim, Output};
 
 pub enum TransmitSignal {
     Key(String, u16, i32, SystemTime),
-    NeovimCWD(String),
     NeovimTCPPort(String),
 }
 
@@ -75,7 +72,6 @@ pub fn start() {
     }
 
     // HTTP server
-    let mut current_nvim_directory = String::new();
     let mut nvim_port = String::new();
 
     crate::http_server::start_server(tx);
@@ -86,11 +82,7 @@ pub fn start() {
 
     for signal in rx {
         match signal {
-            TransmitSignal::NeovimCWD(cwd) => {
-                current_nvim_directory = cwd;
-            }
             TransmitSignal::NeovimTCPPort(port) => {
-                println!("{port}");
                 nvim_port = port;
             }
             TransmitSignal::Key(device_alias, code, value, timestamp) => {
@@ -109,9 +101,6 @@ pub fn start() {
                                 emit_mapped_key(mapping, &sm, &mut virtual_device);
                             }
                             Output::Cmd(cmd, args) => emit_cmd(cmd, args, &sm),
-                            Output::Nvim(msg) => {
-                                emit_nvim_msg(&current_nvim_directory, *msg);
-                            }
                             Output::Sequence(sequence) => {
                                 emit_sequence(sequence, &mut virtual_device);
                             }
@@ -125,11 +114,7 @@ pub fn start() {
                         let modifiers: Vec<u16> = vec![14, 29, 42, 54, 56, 97, 125, 126];
 
                         if !modifiers.contains(&sm.first_code()) {
-                            send_back(&nvim_port, sm.output());
-                            // emit_nvim_msg(
-                            //     &current_nvim_directory,
-                            //     format!("<Plug>{}", sm.output()),
-                            // );
+                            send_signal_to_neovim(&nvim_port, sm.output());
                             sm.set_emitted(true);
                         }
                     }
