@@ -1,4 +1,9 @@
-use crate::stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent};
+use std::fmt::{write, Display};
+
+use crate::{
+    devices::output,
+    stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent},
+};
 
 #[derive(Getters, Setters)]
 pub struct SequenceManager<'a> {
@@ -70,39 +75,41 @@ impl<'a> SequenceManager<'a> {
     }
 
     fn produce_output(&self) -> String {
-        if self.sequence.len() >= 2 {
-            self.produce_union_output();
-        }
+        {
+            let interval_limit = 30;
+            let mut breakpoints: Vec<usize> = vec![0];
+            let mut last_time = self.sequence.first().unwrap().timestamp();
 
-        self.produce_non_union_result()
-    }
-
-    fn produce_union_output(&self) -> Vec<usize> {
-        let interval_limit = 30;
-        let mut breakpoints: Vec<usize> = vec![0];
-        let mut last_time = self.sequence.first().unwrap().timestamp();
-
-        for (i, e) in self.sequence.iter().enumerate() {
-            if e.timestamp()
-                .duration_since(*last_time)
-                .unwrap()
-                .as_millis()
-                > interval_limit
-            {
-                breakpoints.push(i);
-                last_time = e.timestamp();
+            for (i, e) in self.sequence.iter().enumerate() {
+                if e.timestamp()
+                    .duration_since(*last_time)
+                    .unwrap()
+                    .as_millis()
+                    > interval_limit
+                {
+                    breakpoints.push(i);
+                    last_time = e.timestamp();
+                }
             }
+
+            // ---------------------------------- refactor me please
+
+            let mut unions = vec![];
+
+            for (i, e) in self.sequence.iter().enumerate() {
+                if breakpoints.contains(&i) {
+                    unions.push(Union(vec![e]));
+                } else {
+                    unions.last_mut().unwrap().0.push(e);
+                }
+            }
+
+            unions
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>()
+                .join(", ")
         }
-
-        breakpoints
-    }
-
-    fn produce_non_union_result(&self) -> String {
-        self.sequence
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join(", ")
     }
 }
 
@@ -111,7 +118,25 @@ enum SequenceElement<'a> {
     Event(KeyboardEvent<'a>),
 }
 
-struct Union<'a>(Vec<KeyboardEvent<'a>>);
+struct Union<'a>(Vec<&'a KeyboardEvent<'a>>);
+
+impl<'a> Display for Union<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.len() == 1 {
+            return write!(f, "{}", self.0.first().unwrap());
+        }
+
+        write!(
+            f,
+            "[{}]",
+            self.0
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
 
 #[allow(non_snake_case)]
 #[cfg(test)]
@@ -158,74 +183,4 @@ mod sequence_manager_module_test {
         sm.receive(tke!(L1 J Up 200));
         assert_eq!(sm.output(), "L1 LEFTCTRL Down, L1 J Down");
     }
-
-    #[test]
-    fn produce_output_test() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 D Down 0));
-        sm.receive(tke!(L1 F Down 20));
-
-        let want: Vec<usize> = vec![0];
-        let got = sm.produce_union_output();
-        assert_eq!(want, got);
-    }
-
-    #[test]
-    fn produce_output_test_2() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 D Down 0));
-        sm.receive(tke!(L1 F Down 20));
-        sm.receive(tke!(L1 J Down 100));
-
-        let want: Vec<usize> = vec![0, 2];
-        let got = sm.produce_union_output();
-        assert_eq!(want, got);
-    }
-
-    #[test]
-    fn produce_output_test_3() {
-        let L1 = Keyboard::new("L1", "My Left Keyboard", "usb/0/0/input0");
-        let mut sm = SequenceManager::new();
-
-        sm.receive(tke!(L1 D Down 0));
-        sm.receive(tke!(L1 F Down 20));
-        sm.receive(tke!(L1 J Down 100));
-        sm.receive(tke!(L1 K Down 120));
-        sm.receive(tke!(L1 SPACE Down 200));
-        sm.receive(tke!(L1 RIGHTALT Down 250));
-
-        let want: Vec<usize> = vec![0, 2, 4, 5];
-        let got = sm.produce_union_output();
-        assert_eq!(want, got);
-    }
-
-    // #[test]
-    // fn range_test() {
-    //     let vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-    //     let breakpoints: Vec<usize> = vec![0, 2, 4, 5];
-    //
-    //     // let mut ranges = vec![];
-    //
-    //     // for (i, point) in breakpoints.iter().enumerate() {
-    //     //     if i + 1 < breakpoints.len() {
-    //     //         let range = [point..breakpoints.get(i + 1).unwrap()];
-    //     //         ranges.push(range);
-    //     //     }
-    //     //
-    //     //     if i + 1 == breakpoints.len() {
-    //     //         let point_later = point + 1;
-    //     //         let range = [point..point + 1];
-    //     //         ranges.push(range);
-    //     //     }
-    //     // }
-    //
-    //     assert_eq!(vec[0..2], vec![1, 2]);
-    //     assert_eq!(vec[2..4], vec![3, 4]);
-    //     assert_eq!(vec[4..5], vec![5]);
-    //     assert_eq!(vec[5..=5], vec![6]);
-    // }
 }
