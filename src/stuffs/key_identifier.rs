@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::{key_code::KeyCode, keyboard::Keyboard};
 
-#[derive(Debug, PartialEq, Eq, Getters)]
+#[derive(Debug, PartialEq, Eq, Getters, PartialOrd, Ord)]
 pub struct KeyIdentifier<'a> {
     device: &'a Keyboard,
 

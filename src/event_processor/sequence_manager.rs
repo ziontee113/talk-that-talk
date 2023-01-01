@@ -76,7 +76,7 @@ impl<'a> SequenceManager<'a> {
 
     fn produce_output(&self) -> String {
         {
-            let interval_limit = 30;
+            let interval_limit = 50;
             let mut breakpoints: Vec<usize> = vec![0];
             let mut last_time = self.sequence.first().unwrap().timestamp();
 
@@ -126,10 +126,13 @@ impl<'a> Display for Union<'a> {
             return write!(f, "{}", self.0.first().unwrap());
         }
 
+        let mut sorted_union = self.0.clone();
+        sorted_union.sort_by_key(|e| e.key());
+
         write!(
             f,
             "[{}]",
-            self.0
+            sorted_union
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<String>>()
