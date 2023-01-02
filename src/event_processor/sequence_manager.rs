@@ -57,7 +57,7 @@ impl<'a> SequenceManager<'a> {
                         .duration_since(*down_event.timestamp())
                         .unwrap()
                         .as_millis()
-                        > 100
+                        > 250
                     {
                         self.add_event(event.clone());
                     } else {
@@ -120,14 +120,11 @@ impl<'a> SequenceManager<'a> {
             let mut last_time = self.sequence.first().unwrap().timestamp();
 
             for (i, e) in self.sequence.iter().enumerate() {
-                if e.timestamp()
-                    .duration_since(*last_time)
-                    .unwrap()
-                    .as_millis()
-                    > interval_limit
-                {
-                    breakpoints.push(i);
-                    last_time = e.timestamp();
+                if let Ok(duration) = e.timestamp().duration_since(*last_time) {
+                    if duration.as_millis() > interval_limit {
+                        breakpoints.push(i);
+                        last_time = e.timestamp();
+                    }
                 }
             }
 
