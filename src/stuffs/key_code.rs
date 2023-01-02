@@ -551,7 +551,7 @@ const KEY_ARRAY: &[(&str, u16); 548] = &[
     ("BTN_TRIGGER_HAPPY40", 0x2e7),
 ];
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct KeyCode(pub u16);
 
 impl Display for KeyCode {

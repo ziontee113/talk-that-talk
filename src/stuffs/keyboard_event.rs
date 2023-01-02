@@ -2,7 +2,7 @@ use std::{fmt::Display, time::SystemTime};
 
 use super::{key_identifier::KeyIdentifier, key_state::KeyState};
 
-#[derive(Getters, Debug, PartialEq, Eq)]
+#[derive(Getters, Debug, PartialEq, Eq, Clone)]
 pub struct KeyboardEvent<'a> {
     #[getset(get = "pub")]
     key: KeyIdentifier<'a>,

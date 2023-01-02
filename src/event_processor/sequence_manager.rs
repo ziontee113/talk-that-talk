@@ -15,6 +15,8 @@ pub struct SequenceManager<'a> {
 
     #[getset(get = "pub")]
     modifiers: Vec<u16>,
+
+    currently_down_events: Vec<KeyboardEvent<'a>>,
 }
 
 impl<'a> SequenceManager<'a> {
@@ -24,6 +26,7 @@ impl<'a> SequenceManager<'a> {
             output: String::new(),
             emitted: false,
             modifiers: vec![],
+            currently_down_events: vec![],
         }
     }
 
@@ -34,16 +37,55 @@ impl<'a> SequenceManager<'a> {
 
         match event.value() {
             KeyState::Down => {
-                self.add_event(event);
+                self.add_event(event.clone());
                 self.emitted = false;
+
+                self.currently_down_events.push(event);
             }
             KeyState::Up => {
+                let last_down_key = self.currently_down_events.last().unwrap().key().clone();
+
+                if event.key() != &last_down_key {
+                    let down_event = self
+                        .currently_down_events
+                        .iter()
+                        .find(|e| e.key() == event.key() && *e.value() == KeyState::Down)
+                        .unwrap();
+
+                    if event
+                        .timestamp()
+                        .duration_since(*down_event.timestamp())
+                        .unwrap()
+                        .as_millis()
+                        > 100
+                    {
+                        self.add_event(event.clone());
+                    } else {
+                        self.sequence.drain_filter(|e| e.key() == event.key());
+                    }
+                }
+
+                // ---------------------------------------------
+
                 let last_sequence_key = self.sequence.last().unwrap().key();
-                if last_sequence_key == event.key() {
+                if event.key() == last_sequence_key {
                     self.output.push_str(&self.produce_output());
                 }
 
-                self.sequence.drain_filter(|e| e.key() == event.key());
+                // ---------------------------------------------
+
+                self.currently_down_events
+                    .drain_filter(|e| e.key() == event.key());
+
+                if event.key() == &last_down_key {
+                    self.sequence.drain_filter(|e| e.key() == event.key());
+                }
+
+                // ---------------------------------------------
+
+                if self.currently_down_events.is_empty() {
+                    self.sequence.clear();
+                }
             }
             KeyState::Hold => (),
         }
