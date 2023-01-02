@@ -26,6 +26,10 @@ impl<'a> KeyboardEvent<'a> {
 
 impl<'a> Display for KeyboardEvent<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.value == KeyState::Down {
+            return write!(f, "{}", self.key);
+        };
+
         write!(f, "{} {}", self.key, self.value)
     }
 }

@@ -32,28 +32,25 @@ fn mock_keyboard_devices() -> Vec<Keyboard> {
 fn create_mock_ruleset() -> HashMap<&'static str, Output> {
     HashMap::from([
         // Escape Key
-        ("L1 CAPSLOCK Down", Output::Map("Esc")),
+        ("L1 CAPSLOCK", Output::Map("Esc")),
         // Arrow Keys
-        ("L1 CAPSLOCK Down, R1 H Down", Output::Map("Left")),
-        ("L1 CAPSLOCK Down, R1 J Down", Output::Map("Down")),
-        ("L1 CAPSLOCK Down, R1 K Down", Output::Map("Up")),
-        ("L1 CAPSLOCK Down, R1 L Down", Output::Map("Right")),
+        ("L1 CAPSLOCK, R1 H", Output::Map("Left")),
+        ("L1 CAPSLOCK, R1 J", Output::Map("Down")),
+        ("L1 CAPSLOCK, R1 K", Output::Map("Up")),
+        ("L1 CAPSLOCK, R1 L", Output::Map("Right")),
         // Playback Keys
-        ("L1 H Down, R1 J Down", Output::Map("VolumeDown")),
-        ("L1 H Down, R1 K Down", Output::Map("VolumeUp")),
-        ("L1 H Down, R1 P Down", Output::Map("PreviousSong")),
-        ("L1 H Down, R1 N Down", Output::Map("NextSong")),
-        ("L1 H Down, R1 I Down", Output::Map("PlayPause")),
+        ("L1 H, R1 J", Output::Map("VolumeDown")),
+        ("L1 H, R1 K", Output::Map("VolumeUp")),
+        ("L1 H, R1 P", Output::Map("PreviousSong")),
+        ("L1 H, R1 N", Output::Map("NextSong")),
+        ("L1 H, R1 I", Output::Map("PlayPause")),
         // Cmd Test
-        ("L1 E Down, R1 K Down", Output::Cmd("kitty", vec![])),
-        ("L1 E Down, L1 F Down", Output::Cmd("firefox", vec![])),
-        (
-            "L1 E Down, R1 K Down, R1 J Down",
-            Output::Cmd("gedit", vec![]),
-        ),
+        ("L1 E, R1 K", Output::Cmd("kitty", vec![])),
+        ("L1 E, L1 F", Output::Cmd("firefox", vec![])),
+        ("L1 E, R1 K, R1 J", Output::Cmd("gedit", vec![])),
         // Remap Right Alt to <C-F1>
         (
-            "R1 RIGHTALT Down",
+            "R1 RIGHTALT",
             Output::Sequence(vec![("LeftCtrl", 1), ("F1", 1), ("F1", 0), ("LeftCtrl", 0)]),
         ),
     ])

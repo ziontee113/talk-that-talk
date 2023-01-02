@@ -1,9 +1,6 @@
-use std::fmt::{write, Display};
+use std::fmt::Display;
 
-use crate::{
-    devices::output,
-    stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent},
-};
+use crate::stuffs::{key_state::KeyState, keyboard_event::KeyboardEvent};
 
 #[derive(Getters, Setters)]
 pub struct SequenceManager<'a> {
