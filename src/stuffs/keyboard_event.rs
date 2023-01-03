@@ -29,6 +29,9 @@ impl<'a> Display for KeyboardEvent<'a> {
         if self.value == KeyState::Down {
             return write!(f, "{}", self.key);
         };
+        if self.value == KeyState::Up {
+            return write!(f, "!{}", self.key);
+        };
 
         write!(f, "{} {}", self.key, self.value)
     }
