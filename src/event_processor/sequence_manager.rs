@@ -45,49 +45,64 @@ impl<'a> SequenceManager<'a> {
             KeyState::Up => {
                 let last_down_key = self.currently_down_events.last().unwrap().key().clone();
 
-                if event.key() != &last_down_key {
-                    let down_event = self
-                        .currently_down_events
-                        .iter()
-                        .find(|e| e.key() == event.key() && *e.value() == KeyState::Down)
-                        .unwrap();
+                self.handle_orphan_event(&event, &last_down_key);
 
-                    if event
-                        .timestamp()
-                        .duration_since(*down_event.timestamp())
-                        .unwrap()
-                        .as_millis()
-                        > 250
-                    {
-                        self.add_event(event.clone());
-                    } else {
-                        self.sequence.drain_filter(|e| e.key() == event.key());
-                    }
-                }
+                self.update_output(&event);
 
-                // ---------------------------------------------
-
-                let last_sequence_key = self.sequence.last().unwrap().key();
-                if event.key() == last_sequence_key {
-                    self.output.push_str(&self.produce_output());
-                }
-
-                // ---------------------------------------------
-
-                self.currently_down_events
-                    .drain_filter(|e| e.key() == event.key());
-
-                if event.key() == &last_down_key {
-                    self.sequence.drain_filter(|e| e.key() == event.key());
-                }
-
-                // ---------------------------------------------
-
-                if self.currently_down_events.is_empty() {
-                    self.sequence.clear();
-                }
+                self.key_up_event_cleanup(&event, &last_down_key);
             }
             KeyState::Hold => (),
+        }
+    }
+
+    fn handle_orphan_event(
+        &mut self,
+        event: &KeyboardEvent<'a>,
+        last_down_key: &crate::stuffs::key_identifier::KeyIdentifier,
+    ) {
+        if event.key() != last_down_key {
+            if self.orphan_is_valid(event) {
+                self.add_event(event.clone());
+            } else {
+                self.sequence.drain_filter(|e| e.key() == event.key());
+            }
+        }
+    }
+
+    fn orphan_is_valid(&mut self, event: &KeyboardEvent) -> bool {
+        let orphan_counterpart = &self
+            .currently_down_events
+            .iter()
+            .find(|e| e.key() == event.key() && *e.value() == KeyState::Down)
+            .unwrap();
+
+        event
+            .timestamp()
+            .duration_since(*orphan_counterpart.timestamp())
+            .unwrap()
+            .as_millis()
+            > 150
+    }
+
+    fn key_up_event_cleanup(
+        &mut self,
+        event: &KeyboardEvent,
+        last_down_key: &crate::stuffs::key_identifier::KeyIdentifier,
+    ) {
+        self.currently_down_events
+            .drain_filter(|e| e.key() == event.key());
+        if event.key() == last_down_key {
+            self.sequence.drain_filter(|e| e.key() == event.key());
+        }
+        if self.currently_down_events.is_empty() {
+            self.sequence.clear();
+        }
+    }
+
+    fn update_output(&mut self, event: &KeyboardEvent) {
+        let last_sequence_key = self.sequence.last().unwrap().key();
+        if event.key() == last_sequence_key {
+            self.output.push_str(&self.produce_output());
         }
     }
 
