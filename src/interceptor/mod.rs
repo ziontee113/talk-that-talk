@@ -45,13 +45,29 @@ fn create_mock_ruleset() -> HashMap<&'static str, Output> {
         ("L1 H, R1 N", Output::Map("NextSong")),
         ("L1 H, R1 I", Output::Map("PlayPause")),
         // Cmd Test
-        ("L1 E, R1 K", Output::Cmd("kitty", vec![])),
-        ("L1 E, L1 F", Output::Cmd("firefox", vec![])),
-        ("L1 E, R1 K, R1 J", Output::Cmd("gedit", vec![])),
+        // ("L1 E, R1 K", Output::Cmd("kitty", vec![])),
+        // ("L1 E, L1 F", Output::Cmd("firefox", vec![])),
+        // ("L1 E, R1 K, R1 J", Output::Cmd("gedit", vec![])),
         // Remap Right Alt to <C-F1>
         (
             "R1 RIGHTALT",
             Output::Sequence(vec![("LeftCtrl", 1), ("F1", 1), ("F1", 0), ("LeftCtrl", 0)]),
+        ),
+        // Browser links
+        (
+            "R1 B, L1 1",
+            Output::Cmd("xdg-open", vec!["https://1337x.to/"]),
+        ),
+        (
+            "R1 B, L1 F",
+            Output::Cmd("xdg-open", vec!["https://youtube.com/"]),
+        ),
+        (
+            "R1 B, L1 R",
+            Output::Cmd(
+                "xdg-open",
+                vec!["https://discord.com/channels/701530051140780102/813520701281271928"],
+            ),
         ),
     ])
 }

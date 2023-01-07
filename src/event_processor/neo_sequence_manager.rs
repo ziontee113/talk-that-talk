@@ -72,11 +72,11 @@ mod neo_sequence_manager_module_test {
     }
 
     #[test]
-    fn can_receive_event() {
+    fn can_receive_single_event() {
         let (L1, R1) = mock_keyboards();
         let mut sm = NeoSequenceManager::new();
 
         sm.receive(tke!(R1 J Down 0));
-        assert_eq!(sm.output(), "R1 J");
+        assert_eq!(sm.output(), "");
     }
 }

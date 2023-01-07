@@ -107,7 +107,11 @@ impl<'a> SequenceManager<'a> {
     }
 
     pub fn first_code(&self) -> u16 {
-        self.sequence.first().unwrap().key().code().0
+        if let Some(e) = self.sequence.first() {
+            return e.key().code().0;
+        }
+
+        0
     }
 
     pub fn is_combined(&self) -> bool {
